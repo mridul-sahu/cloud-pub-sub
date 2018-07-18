@@ -191,7 +191,23 @@ class PhotosHandler(webapp2.RequestHandler):
 
 class SearchHandler(webapp2.RequestHandler):
     def get(self):
-        template_values = {} #Nothing yet to pass to the template
+        search_term = self.request.get('search-term').lower()
+
+        references = ThumbnailReference.query().order(
+        -ThumbnailReference.date).fetch()
+
+        # Build dictionary of img_url of thumbnails to
+        # thumbnail_references that have the given label.
+        thumbnails = collections.OrderedDict()
+
+        for reference in references:
+            labels = reference.labels
+            if search_term in labels:
+                img_url = get_thumbnail_serving_url(reference.thumbnail_key)
+                thumbnails[img_url] = reference
+
+        template_values = {'thumbnails': thumbnails}
+        
         template = jinja_environment.get_template('search.html')
         self.response.write(template.render(template_values))
 
