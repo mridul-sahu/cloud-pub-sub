@@ -135,6 +135,19 @@ def get_thumbnail_serving_url(photo_name):
     blob_key = blobstore.create_gs_key(filename)
     return images.get_serving_url(blob_key)
 
+def delete_thumbnail(thumbnail_key):
+    filename = '/gs/{}/{}'.format(THUMBNAIL_BUCKET, thumbnail_key)
+
+    blob_key = blobstore.create_gs_key(filename)
+    images.delete_serving_url(blob_key)
+
+    thumbnail_reference = ThumbnailReference.query(
+        ThumbnailReference.thumbnail_key == thumbnail_key).get()
+    thumbnail_reference.key.delete()
+
+    storage_filename = '/{}/{}'.format(THUMBNAIL_BUCKET, thumbnail_key)
+    cloudstorage.delete(storage_filename)
+
 # Google Datastore NDB Client Library allows App Engine Python apps to connect to Cloud Datastore
 class Notification(ndb.Model):
     message = ndb.StringProperty()
@@ -250,6 +263,8 @@ class ReceiveMessage(webapp2.RequestHandler):
                                     original_photo=original_photo)
             thumbnail_reference.put()
 
+        elif event_type == 'OBJECT_DELETE' or event_type == 'OBJECT_ARCHIVE':
+            delete_thumbnail(thumbnail_key)
 
 app = webapp2.WSGIApplication([
         ('/', MainHandler),
